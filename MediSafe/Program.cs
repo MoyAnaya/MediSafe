@@ -33,9 +33,12 @@ builder.Services.AddRazorComponents()
 
 var app = builder.Build();
 
+Console.WriteLine("MEDISAFE: iniciando creación de roles");
+
 using (var scope = app.Services.CreateScope())
 {
-    var roleManager = scope.ServiceProvider.GetRequiredService<RoleManager<IdentityRole>>();
+    var roleManager = scope.ServiceProvider
+        .GetRequiredService<RoleManager<IdentityRole>>();
 
     string[] roles =
     [
@@ -45,12 +48,38 @@ using (var scope = app.Services.CreateScope())
 
     foreach (var role in roles)
     {
+        Console.WriteLine($"MEDISAFE: comprobando rol {role}");
+
         if (!await roleManager.RoleExistsAsync(role))
         {
-            await roleManager.CreateAsync(new IdentityRole(role));
+            var result = await roleManager.CreateAsync(
+                new IdentityRole(role));
+
+            if (!result.Succeeded)
+            {
+                var errors = string.Join(
+                    "; ",
+                    result.Errors.Select(e => e.Description));
+
+                throw new Exception(
+                    $"Error al crear {role}: {errors}");
+            }
+
+            Console.WriteLine($"MEDISAFE: rol {role} creado");
+        }
+        else
+        {
+            Console.WriteLine($"MEDISAFE: rol {role} ya existe");
         }
     }
-}    
+}
+
+using (var scope = app.Services.CreateScope())
+{
+    await AdminSeeder.CreateAdminAsync(
+        scope.ServiceProvider,
+        app.Configuration);
+}
 
 // Configure the HTTP request pipeline.
 if (!app.Environment.IsDevelopment())
