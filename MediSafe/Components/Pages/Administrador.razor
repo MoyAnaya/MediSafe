@@ -10,11 +10,22 @@
 <PageTitle>Panel de administración - MediSafe</PageTitle>
 
 <div class="container mt-4">
-    <h1>Panel de administración</h1>
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h1>Panel de administración</h1>
+            <p class="text-muted mb-0">
+                Desde aquí puedes administrar las cuentas de los médicos.
+            </p>
+        </div>
 
-    <p class="text-muted">
-        Desde aquí puedes administrar las cuentas de los médicos.
-    </p>
+        <form method="post" action="/logout">
+            <AntiforgeryToken />
+
+            <button type="submit" class="btn btn-outline-danger">
+                Cerrar sesión
+            </button>
+        </form>
+    </div>
 
     @if (!string.IsNullOrWhiteSpace(Mensaje))
     {

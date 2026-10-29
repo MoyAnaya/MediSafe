@@ -125,6 +125,18 @@ app.MapPost("/login/submit", async (
     return Results.LocalRedirect("/login?error=1");
 });
 
+app.MapPost("/logout", async (
+    HttpContext context,
+    SignInManager<ApplicationUser> signInManager,
+    Microsoft.AspNetCore.Antiforgery.IAntiforgery antiforgery) =>
+{
+    await antiforgery.ValidateRequestAsync(context);
+
+    await signInManager.SignOutAsync();
+
+    return Results.LocalRedirect("/login");
+});
+
 
 
 using (var scope = app.Services.CreateScope())
