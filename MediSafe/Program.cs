@@ -14,7 +14,7 @@ builder.Services.AddDbContext<ApplicationDbContext>(options =>
     options.UseMySQL(connectionString));
 
 builder.Services
-    .AddIdentityCore<IdentityUser>()
+    .AddIdentityCore<ApplicationUser>()
     .AddRoles<IdentityRole>()
     .AddEntityFrameworkStores<ApplicationDbContext>()
     .AddSignInManager()
@@ -78,8 +78,8 @@ using (var scope = app.Services.CreateScope())
 
 app.MapPost("/login/submit", async (
     HttpContext context,
-    SignInManager<IdentityUser> signInManager,
-    UserManager<IdentityUser> userManager,
+    SignInManager<ApplicationUser> signInManager,
+    UserManager<ApplicationUser> userManager,
     Microsoft.AspNetCore.Antiforgery.IAntiforgery antiforgery) =>
 {
     await antiforgery.ValidateRequestAsync(context);

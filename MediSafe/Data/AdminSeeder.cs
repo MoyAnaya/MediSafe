@@ -10,7 +10,7 @@ public static class AdminSeeder
         IConfiguration configuration)
     {
         var userManager = services.GetRequiredService<
-            UserManager<IdentityUser>>();
+            UserManager<ApplicationUser>>();
 
         var roleManager = services.GetRequiredService<
             RoleManager<IdentityRole>>();
@@ -36,7 +36,7 @@ public static class AdminSeeder
 
         if (user == null)
         {
-            user = new IdentityUser
+            user = new ApplicationUser
             {
                 UserName = email,
                 Email = email,
