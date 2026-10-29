@@ -75,9 +75,11 @@ using (var scope = app.Services.CreateScope())
 }
 
 
+
 app.MapPost("/login/submit", async (
     HttpContext context,
     SignInManager<IdentityUser> signInManager,
+    UserManager<IdentityUser> userManager,
     Microsoft.AspNetCore.Antiforgery.IAntiforgery antiforgery) =>
 {
     await antiforgery.ValidateRequestAsync(context);
@@ -96,11 +98,33 @@ app.MapPost("/login/submit", async (
 
     if (result.Succeeded)
     {
-        return Results.LocalRedirect("/");
+        var user = await userManager.FindByEmailAsync(email);
+
+        if (user == null)
+        {
+            await signInManager.SignOutAsync();
+            return Results.LocalRedirect("/login?error=1");
+        }
+
+        if (await userManager.IsInRoleAsync(
+            user, ApplicationRoles.Administrator))
+        {
+            return Results.LocalRedirect("/administrador");
+        }
+
+        if (await userManager.IsInRoleAsync(
+            user, ApplicationRoles.Doctor))
+        {
+            return Results.LocalRedirect("/medico");
+        }
+
+        await signInManager.SignOutAsync();
+        return Results.LocalRedirect("/login?error=1");
     }
 
     return Results.LocalRedirect("/login?error=1");
 });
+
 
 
 using (var scope = app.Services.CreateScope())
