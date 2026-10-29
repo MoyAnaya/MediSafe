@@ -1,0 +1,103 @@
+﻿@page "/medico"
+@attribute [Microsoft.AspNetCore.Authorization.Authorize(Roles = "Medico")]
+
+@using MediSafe.Data
+@using Microsoft.AspNetCore.Identity
+@using Microsoft.AspNetCore.Components.Authorization
+
+@inject AuthenticationStateProvider AuthenticationStateProvider
+@inject UserManager<ApplicationUser> UserManager
+
+<PageTitle>Panel del médico - MediSafe</PageTitle>
+
+<div class="container mt-4">
+
+    <div class="mb-4">
+        <h1>Panel del médico</h1>
+        <p class="text-muted">
+            Bienvenido a MediSafe. Desde aquí puedes administrar
+            tus pacientes y consultas.
+        </p>
+    </div>
+
+    @if (Cargando)
+    {
+        <p>Cargando información...</p>
+    }
+    else if (MedicoActual != null)
+    {
+        <div class="card shadow-sm mb-4">
+            <div class="card-body">
+                <h4>Información de tu cuenta</h4>
+
+                <p class="mb-1">
+                    <strong>Nombre:</strong> @MedicoActual.Nombre
+                </p>
+
+                <p class="mb-0">
+                    <strong>Correo:</strong> @MedicoActual.Email
+                </p>
+            </div>
+        </div>
+
+        <div class="row">
+
+            <div class="col-md-6 mb-3">
+                <div class="card shadow-sm h-100">
+                    <div class="card-body">
+                        <h4>Mis pacientes</h4>
+
+                        <p class="text-muted">
+                            Registrar, consultar y administrar
+                            la información de tus pacientes.
+                        </p>
+
+                        <button class="btn btn-primary" disabled>
+                            Próximamente
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-md-6 mb-3">
+                <div class="card shadow-sm h-100">
+                    <div class="card-body">
+                        <h4>Mis consultas</h4>
+
+                        <p class="text-muted">
+                            Registrar y consultar el historial
+                            de atención de tus pacientes.
+                        </p>
+
+                        <button class="btn btn-primary" disabled>
+                            Próximamente
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    }
+    else
+    {
+        <div class="alert alert-danger">
+            No se pudo cargar la información de tu cuenta.
+        </div>
+    }
+
+</div>
+
+@code {
+    private ApplicationUser? MedicoActual;
+    private bool Cargando = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var estado = await AuthenticationStateProvider
+            .GetAuthenticationStateAsync();
+
+        MedicoActual = await UserManager.GetUserAsync(estado.User);
+
+        Cargando = false;
+    }
+}
