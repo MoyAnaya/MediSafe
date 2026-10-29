@@ -1,4 +1,5 @@
 ﻿
+using MediSafe.Models;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
@@ -15,6 +16,14 @@ namespace MediSafe.Data
             DbContextOptions<ApplicationDbContext> options)
             : base(options)
         {
+        }
+        public DbSet<Paciente> RegistroPacientes { get; set; }
+
+        protected override void OnModelCreating(ModelBuilder builder)
+        {
+            base.OnModelCreating(builder);
+
+            builder.Entity<Paciente>().ToTable("Pacientes");
         }
     }
 }

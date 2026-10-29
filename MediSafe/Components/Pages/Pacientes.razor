@@ -1,0 +1,207 @@
+﻿@page "/pacientes"
+@attribute [Microsoft.AspNetCore.Authorization.Authorize(Roles = "Medico")]
+
+@using MediSafe.Data
+@using MediSafe.Models
+@using Microsoft.AspNetCore.Identity
+@using Microsoft.EntityFrameworkCore
+@using Microsoft.AspNetCore.Components.Authorization
+
+@inject ApplicationDbContext Db
+@inject UserManager<ApplicationUser> UserManager
+@inject AuthenticationStateProvider AuthenticationStateProvider
+
+<PageTitle>Mis pacientes - MediSafe</PageTitle>
+
+<div class="container mt-4">
+    <h1>Mis pacientes</h1>
+    <p class="text-muted">
+        Registra y consulta los pacientes que tienes a tu cargo.
+    </p>
+    <div class="d-flex gap-2">
+        <a href="/medico" class="btn btn-outline-primary">
+            Volver al panel
+        </a>
+	</div>
+
+    @if (!string.IsNullOrWhiteSpace(Mensaje))
+    {
+        <div class="alert @ClaseMensaje">
+            @Mensaje
+        </div>
+    }
+
+    <div class="card shadow-sm mb-4">
+        <div class="card-body">
+            <h4>Registrar paciente</h4>
+
+            <EditForm Model="NuevoPaciente"
+                      OnValidSubmit="RegistrarPaciente"
+                      FormName="RegistrarPaciente">
+
+                <DataAnnotationsValidator />
+                <ValidationSummary />
+
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label">Nombre</label>
+                        <InputText class="form-control"
+                                   @bind-Value="NuevoPaciente.Nombre" />
+                        <ValidationMessage For="@(() => NuevoPaciente.Nombre)" />
+                    </div>
+
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label">Apellidos</label>
+                        <InputText class="form-control"
+                                   @bind-Value="NuevoPaciente.Apellidos" />
+                        <ValidationMessage For="@(() => NuevoPaciente.Apellidos)" />
+                    </div>
+
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label">Fecha de nacimiento</label>
+                        <InputDate class="form-control"
+                                   @bind-Value="NuevoPaciente.FechaNacimiento" />
+                    </div>
+
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label">Teléfono</label>
+                        <InputText class="form-control"
+                                   @bind-Value="NuevoPaciente.Telefono" />
+                        <ValidationMessage For="@(() => NuevoPaciente.Telefono)" />
+                    </div>
+
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label">Correo electrónico</label>
+                        <InputText class="form-control"
+                                   @bind-Value="NuevoPaciente.Email" />
+                        <ValidationMessage For="@(() => NuevoPaciente.Email)" />
+                    </div>
+                </div>
+
+                <button type="submit" class="btn btn-primary">
+                    Registrar paciente
+                </button>
+            </EditForm>
+        </div>
+    </div>
+
+    <div class="card shadow-sm">
+        <div class="card-body">
+            <h4>Pacientes registrados</h4>
+
+            @if (RegistroPacientes.Count == 0)
+            {
+                <p class="text-muted">
+                    Todavía no tienes pacientes registrados.
+                </p>
+            }
+            else
+            {
+                <div class="table-responsive">
+                    <table class="table table-striped">
+                        <thead>
+                            <tr>
+                                <th>Nombre</th>
+                                <th>Fecha de nacimiento</th>
+                                <th>Teléfono</th>
+                                <th>Correo</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var paciente in RegistroPacientes)
+                            {
+                                <tr>
+                                    <td>@paciente.Nombre @paciente.Apellidos</td>
+                                    <td>
+                                        @(paciente.FechaNacimiento?.ToString("dd/MM/yyyy") ?? "No registrada")
+                                    </td>
+                                    <td>@(paciente.Telefono ?? "No registrado")</td>
+                                    <td>@(paciente.Email ?? "No registrado")</td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            }
+        </div>
+    </div>
+</div>
+
+@code {
+    private CrearPacienteModel NuevoPaciente = new();
+
+    private List<Paciente> RegistroPacientes = new();
+
+    private string Mensaje = string.Empty;
+    private string ClaseMensaje = "alert-info";
+
+    private string? MedicoId;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var estado = await AuthenticationStateProvider
+            .GetAuthenticationStateAsync();
+
+        var medico = await UserManager.GetUserAsync(estado.User);
+
+        if (medico == null)
+        {
+            return;
+        }
+
+        MedicoId = medico.Id;
+
+        await CargarPacientes();
+    }
+
+    private async Task CargarPacientes()
+    {
+        if (string.IsNullOrEmpty(MedicoId))
+        {
+            return;
+        }
+
+        RegistroPacientes = await Db.RegistroPacientes
+            .AsNoTracking()
+            .Where(p => p.MedicoId == MedicoId)
+            .OrderByDescending(p => p.FechaRegistro)
+            .ToListAsync();
+    }
+
+    private async Task RegistrarPaciente()
+    {
+        if (string.IsNullOrEmpty(MedicoId))
+        {
+            MostrarError("No se pudo identificar al médico.");
+            return;
+        }
+
+        var paciente = new Paciente
+        {
+            Nombre = NuevoPaciente.Nombre.Trim(),
+            Apellidos = NuevoPaciente.Apellidos.Trim(),
+            FechaNacimiento = NuevoPaciente.FechaNacimiento,
+            Telefono = NuevoPaciente.Telefono,
+            Email = NuevoPaciente.Email,
+            MedicoId = MedicoId,
+            FechaRegistro = DateTime.UtcNow
+        };
+
+        Db.RegistroPacientes.Add(paciente);
+
+        await Db.SaveChangesAsync();
+
+        NuevoPaciente = new CrearPacienteModel();
+
+        await CargarPacientes();
+
+        Mensaje = "El paciente se registró correctamente.";
+        ClaseMensaje = "alert-success";
+    }
+
+    private void MostrarError(string mensaje)
+    {
+        Mensaje = mensaje;
+        ClaseMensaje = "alert-danger";
+    }
+}
