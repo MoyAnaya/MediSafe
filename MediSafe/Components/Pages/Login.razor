@@ -1,8 +1,6 @@
 ﻿@page "/login"
-@using MediSafe.Models
-@using Microsoft.AspNetCore.Identity
 @using Microsoft.AspNetCore.Components.Forms
-@inject SignInManager<IdentityUser> SignInManager
+@using Microsoft.AspNetCore.WebUtilities
 @inject NavigationManager Navigation
 
 <PageTitle>Iniciar sesión - MediSafe</PageTitle>
@@ -15,82 +13,63 @@
                 Acceso seguro al sistema médico
             </p>
 
-            @if (!string.IsNullOrEmpty(errorMessage))
+            @if (QueryError)
             {
-                <div class="alert alert-danger" role="alert">
-                    @errorMessage
+                <div class="alert alert-danger">
+                    No se pudo iniciar sesión.
+                    Verifica tus credenciales o inténtalo más tarde.
                 </div>
             }
 
-            <EditForm Model="model" OnValidSubmit="LoginAsync">
-                <DataAnnotationsValidator />
-                <ValidationSummary />
+            <form method="post" action="/login/submit">
+                <AntiforgeryToken />
 
                 <div class="mb-3">
-                    <label class="form-label">Correo electrónico</label>
-                    <InputText class="form-control"
-                               @bind-Value="model.Email"
-                               autocomplete="username" />
-                    <ValidationMessage For="@(() => model.Email)" />
+                    <label for="email" class="form-label">
+                        Correo electrónico
+                    </label>
+                    <input id="email"
+                           name="email"
+                           type="email"
+                           class="form-control"
+                           autocomplete="username"
+                           required />
                 </div>
 
                 <div class="mb-3">
-                    <label class="form-label">Contraseña</label>
-                    <InputText class="form-control"
-                               type="password"
-                               @bind-Value="model.Password"
-                               autocomplete="current-password" />
-                    <ValidationMessage For="@(() => model.Password)" />
+                    <label for="password" class="form-label">
+                        Contraseña
+                    </label>
+                    <input id="password"
+                           name="password"
+                           type="password"
+                           class="form-control"
+                           autocomplete="current-password"
+                           required />
                 </div>
 
                 <div class="form-check mb-3">
-                    <InputCheckbox class="form-check-input"
-                                   @bind-Value="model.RememberMe" />
-                    <label class="form-check-label">
+                    <input id="rememberMe"
+                           name="rememberMe"
+                           value="true"
+                           type="checkbox"
+                           class="form-check-input" />
+                    <label for="rememberMe" class="form-check-label">
                         Mantener la sesión iniciada
                     </label>
                 </div>
 
-                <button type="submit"
-                        class="btn btn-primary w-100">
+                <button type="submit" class="btn btn-primary w-100">
                     Iniciar sesión
                 </button>
-            </EditForm>
+            </form>
         </div>
     </div>
 </div>
 
 @code {
-    private LoginModel model = new();
-    private string? errorMessage;
-
-    private async Task LoginAsync()
-    {
-        errorMessage = null;
-
-        var result = await SignInManager.PasswordSignInAsync(
-            model.Email,
-            model.Password,
-            model.RememberMe,
-            lockoutOnFailure: true);
-
-        if (result.Succeeded)
-        {
-            Navigation.NavigateTo("/", forceLoad: true);
-        }
-        else if (result.IsLockedOut)
-        {
-            errorMessage =
-                "La cuenta está temporalmente bloqueada. Inténtalo más tarde.";
-        }
-        else
-        {
-            errorMessage =
-                "Correo o contraseña incorrectos.";
-        }
-    }
-}
-
-@code {
-
+    private bool QueryError =>
+        QueryHelpers.ParseQuery(
+            new Uri(Navigation.Uri).Query)
+        .ContainsKey("error");
 }

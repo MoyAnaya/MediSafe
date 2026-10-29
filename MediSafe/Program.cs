@@ -74,6 +74,35 @@ using (var scope = app.Services.CreateScope())
     }
 }
 
+
+app.MapPost("/login/submit", async (
+    HttpContext context,
+    SignInManager<IdentityUser> signInManager,
+    Microsoft.AspNetCore.Antiforgery.IAntiforgery antiforgery) =>
+{
+    await antiforgery.ValidateRequestAsync(context);
+
+    var form = await context.Request.ReadFormAsync();
+
+    var email = form["email"].ToString();
+    var password = form["password"].ToString();
+    var rememberMe = form["rememberMe"] == "true";
+
+    var result = await signInManager.PasswordSignInAsync(
+        email,
+        password,
+        rememberMe,
+        lockoutOnFailure: true);
+
+    if (result.Succeeded)
+    {
+        return Results.LocalRedirect("/");
+    }
+
+    return Results.LocalRedirect("/login?error=1");
+});
+
+
 using (var scope = app.Services.CreateScope())
 {
     await AdminSeeder.CreateAdminAsync(
