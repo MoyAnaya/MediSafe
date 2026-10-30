@@ -89,7 +89,7 @@
         <div class="card-body">
             <h4>Pacientes registrados</h4>
 
-            @if (RegistroPacientes.Count == 0)
+            @if (RegistrosPacientes.Count == 0)
             {
                 <p class="text-muted">
                     Todavía no tienes pacientes registrados.
@@ -108,7 +108,7 @@
                             </tr>
                         </thead>
                         <tbody>
-                            @foreach (var paciente in RegistroPacientes)
+                            @foreach (var paciente in RegistrosPacientes)
                             {
                                 <tr>
                                     <td>@paciente.Nombre @paciente.Apellidos</td>
@@ -130,7 +130,7 @@
 @code {
     private CrearPacienteModel NuevoPaciente = new();
 
-    private List<Paciente> RegistroPacientes = new();
+    private List<Paciente> RegistrosPacientes = new();
 
     private string Mensaje = string.Empty;
     private string ClaseMensaje = "alert-info";
@@ -161,7 +161,7 @@
             return;
         }
 
-        RegistroPacientes = await Db.RegistroPacientes
+        RegistrosPacientes = await Db.RegistrosPacientes
             .AsNoTracking()
             .Where(p => p.MedicoId == MedicoId)
             .OrderByDescending(p => p.FechaRegistro)
@@ -187,7 +187,7 @@
             FechaRegistro = DateTime.UtcNow
         };
 
-        Db.RegistroPacientes.Add(paciente);
+        Db.RegistrosPacientes.Add(paciente);
 
         await Db.SaveChangesAsync();
 

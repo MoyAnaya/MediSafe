@@ -1,0 +1,116 @@
+﻿@page "/consultas"
+@attribute [Microsoft.AspNetCore.Authorization.Authorize(Roles = "Medico")]
+
+@using MediSafe.Data
+@using MediSafe.Models
+@using Microsoft.AspNetCore.Identity
+@using Microsoft.EntityFrameworkCore
+@using Microsoft.AspNetCore.Components.Authorization
+
+@inject ApplicationDbContext Db
+@inject UserManager<ApplicationUser> UserManager
+@inject AuthenticationStateProvider AuthenticationStateProvider
+
+<PageTitle>Gestionar consultas - MediSafe</PageTitle>
+
+<div class="container mt-4">
+
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1>Gestionar consultas</h1>
+
+        <a href="/medico" class="btn btn-outline-primary">
+            Volver al panel
+        </a>
+    </div>
+
+    <p class="text-muted">
+        Selecciona un paciente para consultar su historial y registrar
+        una nueva consulta.
+    </p>
+
+    @if (Cargando)
+    {
+        <p>Cargando pacientes...</p>
+    }
+    else if (Pacientes.Count == 0)
+    {
+        <div class="alert alert-info">
+            Todavía no tienes pacientes registrados.
+            Primero debes registrar un paciente.
+        </div>
+
+        <a href="/pacientes" class="btn btn-primary">
+            Registrar pacientes
+        </a>
+    }
+    else
+    {
+        <div class="card shadow-sm">
+            <div class="card-body">
+                <h4>Seleccionar paciente</h4>
+
+                <div class="table-responsive">
+                    <table class="table table-striped">
+                        <thead>
+                            <tr>
+                                <th>Nombre</th>
+                                <th>Teléfono</th>
+                                <th>Correo</th>
+                                <th>Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var paciente in Pacientes)
+                            {
+                                <tr>
+                                    <td>
+                                        @paciente.Nombre @paciente.Apellidos
+                                    </td>
+                                    <td>
+                                        @(paciente.Telefono ?? "No registrado")
+                                    </td>
+                                    <td>
+                                        @(paciente.Email ?? "No registrado")
+                                    </td>
+                                    <td>
+                                        <a href="@($"/pacientes/historial/{paciente.Id}")"
+                                           class="btn btn-primary btn-sm">
+                                            Consultar historial
+                                        </a>
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    }
+</div>
+
+@code {
+    private List<Paciente> Pacientes = new();
+    private string? MedicoId;
+    private bool Cargando = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var estado = await AuthenticationStateProvider
+            .GetAuthenticationStateAsync();
+
+        var medico = await UserManager.GetUserAsync(estado.User);
+
+        if (medico != null)
+        {
+            MedicoId = medico.Id;
+
+            Pacientes = await Db.RegistrosPacientes
+                .AsNoTracking()
+                .Where(p => p.MedicoId == MedicoId)
+                .OrderBy(p => p.Nombre)
+                .ToListAsync();
+        }
+
+        Cargando = false;
+    }
+}

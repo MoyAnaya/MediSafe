@@ -1,8 +1,7 @@
-﻿
-using MediSafe.Models;
-using Microsoft.AspNetCore.Identity;
+﻿using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
+using MediSafe.Models;
 
 namespace MediSafe.Data
 {
@@ -10,6 +9,7 @@ namespace MediSafe.Data
     {
         public string Nombre { get; set; } = string.Empty;
     }
+
     public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
     {
         public ApplicationDbContext(
@@ -17,13 +17,17 @@ namespace MediSafe.Data
             : base(options)
         {
         }
-        public DbSet<Paciente> RegistroPacientes { get; set; }
+
+        public DbSet<Paciente> RegistrosPacientes { get; set; }
+
+        public DbSet<Consulta> RegistrosConsultas { get; set; }
 
         protected override void OnModelCreating(ModelBuilder builder)
         {
             base.OnModelCreating(builder);
 
             builder.Entity<Paciente>().ToTable("Pacientes");
+            builder.Entity<Consulta>().ToTable("Consultas");
         }
     }
 }

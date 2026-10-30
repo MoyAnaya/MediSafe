@@ -1,0 +1,224 @@
+﻿@page "/pacientes/historial/{PacienteId:int}"
+@attribute [Microsoft.AspNetCore.Authorization.Authorize(Roles = "Medico")]
+
+@using MediSafe.Data
+@using MediSafe.Models
+@using Microsoft.AspNetCore.Identity
+@using Microsoft.EntityFrameworkCore
+@using Microsoft.AspNetCore.Components.Authorization
+
+@inject ApplicationDbContext Db
+@inject UserManager<ApplicationUser> UserManager
+@inject AuthenticationStateProvider AuthenticationStateProvider
+
+<PageTitle>Historial del paciente - MediSafe</PageTitle>
+
+<div class="container mt-4">
+
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1>Historial del paciente</h1>
+
+        <a href="/consultas" class="btn btn-outline-primary">
+			Volver a pacientes en consultas
+        </a>
+    </div>
+
+    @if (Cargando)
+    {
+        <p>Cargando información...</p>
+    }
+    else if (PacienteActual == null)
+    {
+        <div class="alert alert-danger">
+            No se encontró el paciente o no tienes permiso para consultarlo.
+        </div>
+    }
+    else
+    {
+        <div class="card shadow-sm mb-4">
+            <div class="card-body">
+                <h4>Información del paciente</h4>
+
+                <p><strong>Nombre:</strong> @PacienteActual.Nombre @PacienteActual.Apellidos</p>
+                <p><strong>Correo:</strong> @(PacienteActual.Email ?? "No registrado")</p>
+                <p><strong>Teléfono:</strong> @(PacienteActual.Telefono ?? "No registrado")</p>
+                <p class="mb-0">
+                    <strong>Fecha de nacimiento:</strong>
+                    @(PacienteActual.FechaNacimiento?.ToString("dd/MM/yyyy") ?? "No registrada")
+                </p>
+            </div>
+        </div>
+
+        <div class="card shadow-sm mb-4">
+            <div class="card-body">
+                <h4>Registrar nueva consulta</h4>
+
+                @if (!string.IsNullOrWhiteSpace(Mensaje))
+                {
+                    <div class="alert @ClaseMensaje">@Mensaje</div>
+                }
+
+                <EditForm Model="NuevaConsulta"
+                          OnValidSubmit="RegistrarConsulta"
+                          FormName="RegistrarConsulta">
+
+                    <DataAnnotationsValidator />
+                    <ValidationSummary />
+
+                    <div class="mb-3">
+                        <label class="form-label">Fecha de consulta</label>
+                        <InputDate class="form-control"
+                                   @bind-Value="NuevaConsulta.FechaConsulta"
+                                   type="InputDateType.Date" />
+                        <ValidationMessage For="@(() => NuevaConsulta.FechaConsulta)" />
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Motivo de consulta</label>
+                        <InputTextArea class="form-control"
+                                       @bind-Value="NuevaConsulta.Motivo" />
+                        <ValidationMessage For="@(() => NuevaConsulta.Motivo)" />
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Diagnóstico</label>
+                        <InputTextArea class="form-control"
+                                       @bind-Value="NuevaConsulta.Diagnostico" />
+                        <ValidationMessage For="@(() => NuevaConsulta.Diagnostico)" />
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Tratamiento</label>
+                        <InputTextArea class="form-control"
+                                       @bind-Value="NuevaConsulta.Tratamiento" />
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Observaciones</label>
+                        <InputTextArea class="form-control"
+                                       @bind-Value="NuevaConsulta.Observaciones" />
+                    </div>
+
+                    <button type="submit" class="btn btn-primary">
+                        Guardar consulta
+                    </button>
+                </EditForm>
+            </div>
+        </div>
+
+        <div class="card shadow-sm mb-4">
+            <div class="card-body">
+                <h4>Historial de consultas</h4>
+
+                @if (Consultas.Count == 0)
+                {
+                    <p class="text-muted">
+                        Este paciente todavía no tiene consultas registradas.
+                    </p>
+                }
+                else
+                {
+                    @foreach (var consulta in Consultas)
+                    {
+                        <div class="border rounded p-3 mb-3">
+                            <h5>
+                                Consulta del
+                                @consulta.FechaConsulta.ToString("dd/MM/yyyy HH:mm")
+                            </h5>
+
+                            <p><strong>Motivo:</strong> @consulta.Motivo</p>
+                            <p><strong>Diagnóstico:</strong> @consulta.Diagnostico</p>
+                            <p><strong>Tratamiento:</strong> @(consulta.Tratamiento ?? "No registrado")</p>
+                            <p class="mb-0">
+                                <strong>Observaciones:</strong>
+                                @(consulta.Observaciones ?? "Sin observaciones")
+                            </p>
+                        </div>
+                    }
+                }
+            </div>
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter]
+    public int PacienteId { get; set; }
+
+    private Paciente? PacienteActual;
+    private List<Consulta> Consultas = new();
+    private CrearConsultaModel NuevaConsulta = new();
+
+    private string MedicoId = string.Empty;
+    private string Mensaje = string.Empty;
+    private string ClaseMensaje = "alert-info";
+    private bool Cargando = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var estado = await AuthenticationStateProvider
+            .GetAuthenticationStateAsync();
+
+        var medico = await UserManager.GetUserAsync(estado.User);
+
+        if (medico == null)
+        {
+            Cargando = false;
+            return;
+        }
+
+        MedicoId = medico.Id;
+
+        PacienteActual = await Db.RegistrosPacientes
+            .AsNoTracking()
+            .FirstOrDefaultAsync(p =>
+                p.Id == PacienteId &&
+                p.MedicoId == MedicoId);
+
+        if (PacienteActual != null)
+        {
+            await CargarConsultas();
+        }
+
+        Cargando = false;
+    }
+
+    private async Task CargarConsultas()
+    {
+        Consultas = await Db.RegistrosConsultas
+            .AsNoTracking()
+            .Where(c =>
+                c.PacienteId == PacienteId &&
+                c.MedicoId == MedicoId)
+            .OrderByDescending(c => c.FechaConsulta)
+            .ToListAsync();
+    }
+
+    private async Task RegistrarConsulta()
+    {
+        if (PacienteActual == null || string.IsNullOrEmpty(MedicoId))
+        {
+            return;
+        }
+
+        var consulta = new Consulta
+        {
+            PacienteId = PacienteId,
+            MedicoId = MedicoId,
+            FechaConsulta = NuevaConsulta.FechaConsulta,
+            Motivo = NuevaConsulta.Motivo.Trim(),
+            Diagnostico = NuevaConsulta.Diagnostico.Trim(),
+            Tratamiento = NuevaConsulta.Tratamiento?.Trim(),
+            Observaciones = NuevaConsulta.Observaciones?.Trim()
+        };
+
+        Db.RegistrosConsultas.Add(consulta);
+        await Db.SaveChangesAsync();
+
+        NuevaConsulta = new CrearConsultaModel();
+        await CargarConsultas();
+
+        Mensaje = "La consulta se registró correctamente.";
+        ClaseMensaje = "alert-success";
+    }
+}
