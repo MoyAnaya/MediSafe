@@ -18,6 +18,10 @@
     <div class="d-flex justify-content-between align-items-center mb-4">
         <h1>Historial del paciente</h1>
 
+        <p class="text-muted mb-0">
+            Médico responsable: <strong>@NombreMedico</strong>
+        </p>
+
         <a href="/consultas" class="btn btn-outline-primary">
 			Volver a pacientes en consultas
         </a>
@@ -125,6 +129,9 @@
                                 Consulta del
                                 @consulta.FechaConsulta.ToString("dd/MM/yyyy HH:mm")
                             </h5>
+                            <p>
+                                <strong>Médico:</strong> @NombreMedico
+                            </p>
 
                             <p><strong>Motivo:</strong> @consulta.Motivo</p>
                             <p><strong>Diagnóstico:</strong> @consulta.Diagnostico</p>
@@ -150,6 +157,7 @@
     private CrearConsultaModel NuevaConsulta = new();
 
     private string MedicoId = string.Empty;
+    private string NombreMedico = "No identificado";
     private string Mensaje = string.Empty;
     private string ClaseMensaje = "alert-info";
     private bool Cargando = true;
@@ -168,6 +176,10 @@
         }
 
         MedicoId = medico.Id;
+
+        NombreMedico = string.IsNullOrWhiteSpace(medico.Nombre)
+        ? medico.Email ?? "Médico"
+        : medico.Nombre;
 
         PacienteActual = await Db.RegistrosPacientes
             .AsNoTracking()

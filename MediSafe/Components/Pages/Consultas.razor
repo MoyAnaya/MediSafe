@@ -16,7 +16,12 @@
 <div class="container mt-4">
 
     <div class="d-flex justify-content-between align-items-center mb-4">
-        <h1>Gestionar consultas</h1>
+        <div>
+            <h1>Gestionar consultas</h1>
+            <p class="text-muted mb-0">
+                Médico responsable: <strong>@NombreMedico</strong>
+            </p>
+        </div>
 
         <a href="/medico" class="btn btn-outline-primary">
             Volver al panel
@@ -90,7 +95,9 @@
 
 @code {
     private List<Paciente> Pacientes = new();
+
     private string? MedicoId;
+    private string NombreMedico = "No identificado";
     private bool Cargando = true;
 
     protected override async Task OnInitializedAsync()
@@ -103,6 +110,10 @@
         if (medico != null)
         {
             MedicoId = medico.Id;
+
+            NombreMedico = string.IsNullOrWhiteSpace(medico.Nombre)
+            ? medico.Email ?? "Médico"
+            : medico.Nombre;
 
             Pacientes = await Db.RegistrosPacientes
                 .AsNoTracking()

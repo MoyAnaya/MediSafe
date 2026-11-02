@@ -16,7 +16,10 @@
 <div class="container mt-4">
     <h1>Mis pacientes</h1>
     <p class="text-muted">
-        Registra y consulta los pacientes que tienes a tu cargo.
+        Médico responsable: <strong>@NombreMedico</strong>
+    </p>
+    <p class="text-muted">
+        Los campos marcados con (*) son obligatorios.
     </p>
     <div class="d-flex gap-2">
         <a href="/medico" class="btn btn-outline-primary">
@@ -44,14 +47,14 @@
 
                 <div class="row">
                     <div class="col-md-6 mb-3">
-                        <label class="form-label">Nombre</label>
+                        <label class="form-label">Nombre *</label>
                         <InputText class="form-control"
                                    @bind-Value="NuevoPaciente.Nombre" />
                         <ValidationMessage For="@(() => NuevoPaciente.Nombre)" />
                     </div>
 
                     <div class="col-md-6 mb-3">
-                        <label class="form-label">Apellidos</label>
+                        <label class="form-label">Apellidos *</label>
                         <InputText class="form-control"
                                    @bind-Value="NuevoPaciente.Apellidos" />
                         <ValidationMessage For="@(() => NuevoPaciente.Apellidos)" />
@@ -64,7 +67,7 @@
                     </div>
 
                     <div class="col-md-6 mb-3">
-                        <label class="form-label">Teléfono</label>
+                        <label class="form-label">Teléfono (opcional)</label>
                         <InputText class="form-control"
                                    @bind-Value="NuevoPaciente.Telefono" />
                         <ValidationMessage For="@(() => NuevoPaciente.Telefono)" />
@@ -105,6 +108,7 @@
                                 <th>Fecha de nacimiento</th>
                                 <th>Teléfono</th>
                                 <th>Correo</th>
+                                <th>Acciones</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -117,6 +121,13 @@
                                     </td>
                                     <td>@(paciente.Telefono ?? "No registrado")</td>
                                     <td>@(paciente.Email ?? "No registrado")</td>
+                                    <td>
+                                        <button type="button"
+                                                class="btn btn-warning btn-sm"
+                                                @onclick="() => IniciarEdicion(paciente)">
+                                            Editar
+                                        </button>
+                                    </td>
                                 </tr>
                             }
                         </tbody>
@@ -125,9 +136,77 @@
             }
         </div>
     </div>
+    @if (PacienteEditando != null)
+    {
+        <div class="card shadow-sm mb-4">
+            <div class="card-body">
+                <h4>Editar paciente</h4>
+
+                <EditForm Model="DatosEdicion"
+                          OnValidSubmit="GuardarEdicion"
+                          FormName="EditarPaciente">
+
+                    <DataAnnotationsValidator />
+                    <ValidationSummary />
+
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Nombre *</label>
+                            <InputText class="form-control"
+                                       @bind-Value="DatosEdicion.Nombre" />
+                            <ValidationMessage For="@(() => DatosEdicion.Nombre)" />
+                        </div>
+
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Apellidos *</label>
+                            <InputText class="form-control"
+                                       @bind-Value="DatosEdicion.Apellidos" />
+                            <ValidationMessage For="@(() => DatosEdicion.Apellidos)" />
+                        </div>
+
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Fecha de nacimiento</label>
+                            <InputDate class="form-control"
+                                       @bind-Value="DatosEdicion.FechaNacimiento" />
+                        </div>
+
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Teléfono (opcional)</label>
+                            <InputText class="form-control"
+                                       @bind-Value="DatosEdicion.Telefono"
+                                       maxlength="10"
+                                       inputmode="numeric" />
+                            <ValidationMessage For="@(() => DatosEdicion.Telefono)" />
+                        </div>
+
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Correo electrónico</label>
+                            <InputText class="form-control"
+                                       @bind-Value="DatosEdicion.Email" />
+                            <ValidationMessage For="@(() => DatosEdicion.Email)" />
+                        </div>
+                    </div>
+
+                    <button type="submit" class="btn btn-success me-2">
+                        Guardar cambios
+                    </button>
+
+                    <button type="button"
+                            class="btn btn-secondary"
+                            @onclick="CancelarEdicion">
+                        Cancelar
+                    </button>
+                </EditForm>
+            </div>
+        </div>
+    }
 </div>
 
 @code {
+
+    private Paciente? PacienteEditando;
+    private CrearPacienteModel DatosEdicion = new();
+    
     private CrearPacienteModel NuevoPaciente = new();
 
     private List<Paciente> RegistrosPacientes = new();
@@ -136,6 +215,7 @@
     private string ClaseMensaje = "alert-info";
 
     private string? MedicoId;
+    private string NombreMedico = "No identificado";
 
     protected override async Task OnInitializedAsync()
     {
@@ -150,6 +230,9 @@
         }
 
         MedicoId = medico.Id;
+        NombreMedico = string.IsNullOrWhiteSpace(medico.Nombre)
+        ? medico.Email ?? "Médico"
+        : medico.Nombre;
 
         await CargarPacientes();
     }
@@ -203,5 +286,72 @@
     {
         Mensaje = mensaje;
         ClaseMensaje = "alert-danger";
+    }
+
+    private void IniciarEdicion(Paciente paciente)
+    {
+        if (paciente.MedicoId != MedicoId)
+            return;
+
+        PacienteEditando = paciente;
+
+        DatosEdicion = new CrearPacienteModel
+        {
+            Nombre = paciente.Nombre,
+            Apellidos = paciente.Apellidos,
+            FechaNacimiento = paciente.FechaNacimiento,
+            Telefono = paciente.Telefono,
+            Email = paciente.Email
+        };
+
+        Mensaje = string.Empty;
+    }
+
+    private async Task GuardarEdicion()
+    {
+        if (PacienteEditando == null || string.IsNullOrEmpty(MedicoId))
+        {
+            MostrarError("No se pudo identificar al paciente o al médico.");
+            return;
+        }
+
+        // Verificar nuevamente que el paciente pertenece al médico.
+        var paciente = await Db.RegistrosPacientes
+            .FirstOrDefaultAsync(p =>
+                p.Id == PacienteEditando.Id &&
+                p.MedicoId == MedicoId);
+
+        if (paciente == null)
+        {
+            MostrarError("No se encontró el paciente o no tienes permiso para editarlo.");
+            PacienteEditando = null;
+            return;
+        }
+
+        paciente.Nombre = DatosEdicion.Nombre.Trim();
+        paciente.Apellidos = DatosEdicion.Apellidos.Trim();
+        paciente.FechaNacimiento = DatosEdicion.FechaNacimiento;
+        paciente.Telefono = string.IsNullOrWhiteSpace(DatosEdicion.Telefono)
+            ? null
+            : DatosEdicion.Telefono.Trim();
+        paciente.Email = string.IsNullOrWhiteSpace(DatosEdicion.Email)
+            ? null
+            : DatosEdicion.Email.Trim();
+
+        await Db.SaveChangesAsync();
+
+        PacienteEditando = null;
+        DatosEdicion = new CrearPacienteModel();
+
+        await CargarPacientes();
+
+        Mensaje = "Los datos del paciente se actualizaron correctamente.";
+        ClaseMensaje = "alert-success";
+    }
+
+    private void CancelarEdicion()
+    {
+        PacienteEditando = null;
+        DatosEdicion = new CrearPacienteModel();
     }
 }

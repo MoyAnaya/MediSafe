@@ -67,7 +67,10 @@
                                        @bind-Value="NuevoMedico.Password" />
                             <ValidationMessage For="@(() => NuevoMedico.Password)" />
                             <small class="text-muted">
-                                La contraseña debe cumplir las reglas de seguridad de MediSafe.
+                                La contraseña debe contener:
+                                mínimo 8 caracteres, una letra mayúscula,
+                                una letra minúscula, un número y un carácter especial
+                                (por ejemplo: !, #, $, %).
                             </small>
                         </div>
 
@@ -180,22 +183,57 @@
 
     @if (MedicoPorEliminar != null)
     {
-        <div class="alert alert-warning">
-            <p>
-                ¿Seguro que deseas eliminar la cuenta de
-                <strong>@MedicoPorEliminar.Nombre</strong>
-                (@MedicoPorEliminar.Email)?
-            </p>
+        <div class="alert alert-warning mt-3">
+            @if (!ConfirmacionFinalEliminacion)
+            {
+                <h5>Primera confirmación</h5>
 
-            <button class="btn btn-danger me-2"
-                    @onclick="EliminarMedico">
-                Sí, eliminar cuenta
-            </button>
+                <p>
+                    ¿Deseas continuar con la eliminación de la cuenta de
+                    <strong>@MedicoPorEliminar.Nombre</strong>
+                    (@MedicoPorEliminar.Email)?
+                </p>
 
-            <button class="btn btn-secondary"
-                    @onclick="CancelarEliminacion">
-                Cancelar
-            </button>
+                <p>
+                    En el siguiente paso se te informará qué información
+                    se eliminará de forma permanente.
+                </p>
+
+                <button class="btn btn-warning me-2"
+                        @onclick="MostrarConfirmacionFinal">
+                    Continuar
+                </button>
+
+                <button class="btn btn-secondary"
+                        @onclick="CancelarEliminacion">
+                    Cancelar
+                </button>
+            }
+            else
+            {
+                <h5>Segunda confirmación: eliminación permanente</h5>
+
+                <p>
+                    <strong>¡Advertencia!</strong> Al eliminar esta cuenta,
+                    también se eliminarán todos los pacientes registrados
+                    por este médico y las consultas asociadas.
+                    Esta información no podrá recuperarse desde MediSafe.
+                </p>
+
+                <p>
+                    Médico: <strong>@MedicoPorEliminar.Nombre</strong>
+                </p>
+
+                <button class="btn btn-danger me-2"
+                        @onclick="EliminarMedico">
+                    Confirmar eliminación definitiva
+                </button>
+
+                <button class="btn btn-secondary"
+                        @onclick="CancelarEliminacion">
+                    Cancelar
+                </button>
+            }
         </div>
     }
 </div>
@@ -204,6 +242,8 @@
     private CrearMedicoModel NuevoMedico = new();
 
     private List<ApplicationUser> Medicos = new();
+
+	private bool ConfirmacionFinalEliminacion = false;
 
     private ApplicationUser? MedicoEditando;
     private ApplicationUser? MedicoPorEliminar;
@@ -349,13 +389,28 @@
     private void SolicitarEliminacion(ApplicationUser medico)
     {
         MedicoPorEliminar = medico;
+        ConfirmacionFinalEliminacion = false;
         MedicoEditando = null;
         Mensaje = string.Empty;
     }
 
+    private void MostrarConfirmacionFinal()
+    {
+        if (MedicoPorEliminar != null)
+        {
+            ConfirmacionFinalEliminacion = true;
+        }
+    }
+
+    private void CancelarEliminacion()
+    {
+        MedicoPorEliminar = null;
+        ConfirmacionFinalEliminacion = false;
+    }
+
     private async Task EliminarMedico()
     {
-        if (MedicoPorEliminar == null)
+        if (MedicoPorEliminar == null || !ConfirmacionFinalEliminacion)
             return;
 
         var medico = await UserManager.FindByIdAsync(MedicoPorEliminar.Id);
@@ -364,46 +419,71 @@
             !await UserManager.IsInRoleAsync(medico, ApplicationRoles.Doctor))
         {
             MostrarError("No se encontró la cuenta médica.");
-            MedicoPorEliminar = null;
+            CancelarEliminacion();
             return;
         }
 
-        var tienePacientes = await Db.RegistrosPacientes
-            .AnyAsync(p => p.MedicoId == medico.Id);
+        await using var transaccion = await Db.Database.BeginTransactionAsync();
 
-        var tieneConsultas = await Db.RegistrosConsultas
-            .AnyAsync(c => c.MedicoId == medico.Id);
-
-        if (tienePacientes || tieneConsultas)
+        try
         {
+            // Buscar los pacientes registrados por este médico.
+            var pacientes = await Db.RegistrosPacientes
+                .Where(p => p.MedicoId == medico.Id)
+                .ToListAsync();
+
+            var idsPacientes = pacientes
+                .Select(p => p.Id)
+                .ToList();
+
+            // Buscar las consultas del médico y las de sus pacientes.
+            var consultas = await Db.RegistrosConsultas
+                .Where(c => c.MedicoId == medico.Id ||
+                            idsPacientes.Contains(c.PacienteId))
+                .ToListAsync();
+
+            // Eliminar primero las consultas y después los pacientes.
+            Db.RegistrosConsultas.RemoveRange(consultas);
+            Db.RegistrosPacientes.RemoveRange(pacientes);
+
+            await Db.SaveChangesAsync();
+
+            // Eliminar la cuenta del médico.
+            var resultado = await UserManager.DeleteAsync(medico);
+
+            if (!resultado.Succeeded)
+            {
+                await transaccion.RollbackAsync();
+
+                MostrarError(
+                    "No se pudo eliminar la cuenta: " +
+                    string.Join(" | ", resultado.Errors.Select(e => e.Description)));
+
+                CancelarEliminacion();
+                return;
+            }
+
+            await transaccion.CommitAsync();
+
+            CancelarEliminacion();
+            await CargarMedicos();
+
+            Mensaje = "La cuenta del médico y sus registros asociados se eliminaron correctamente.";
+            ClaseMensaje = "alert-success";
+        }
+        catch (Exception)
+        {
+            await transaccion.RollbackAsync();
+
+            CancelarEliminacion();
+
             MostrarError(
-                "No se puede eliminar esta cuenta porque tiene pacientes o consultas asociadas. " +
-                "Conserva la información clínica y revisa su gestión antes de eliminarla.");
-            MedicoPorEliminar = null;
-            return;
+                "Ocurrió un error al eliminar la cuenta y sus registros. " +
+                "Verifica la base de datos e inténtalo nuevamente.");
         }
-
-        var resultado = await UserManager.DeleteAsync(medico);
-
-        if (!resultado.Succeeded)
-        {
-            MostrarError("No se pudo eliminar la cuenta: " +
-                string.Join(" | ", resultado.Errors.Select(e => e.Description)));
-            MedicoPorEliminar = null;
-            return;
-        }
-
-        MedicoPorEliminar = null;
-        await CargarMedicos();
-
-        Mensaje = "La cuenta del médico se eliminó correctamente.";
-        ClaseMensaje = "alert-success";
     }
 
-    private void CancelarEliminacion()
-    {
-        MedicoPorEliminar = null;
-    }
+    
 
     private void MostrarError(string mensaje)
     {
