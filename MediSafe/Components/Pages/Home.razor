@@ -1,7 +1,156 @@
 ﻿@page "/"
 
-<PageTitle>Home</PageTitle>
+<PageTitle>Inicio - MediSafe</PageTitle>
 
-<h1>Hello, world!</h1>
+<div class="container mt-5">
 
-Welcome to your new app.
+    <!-- Bienvenida -->
+    <div class="p-5 mb-4 rounded-4 text-white"
+         style="background: linear-gradient(135deg, #123B63, #247BA0);">
+
+        <div class="row align-items-center">
+
+            <div class="col-md-8">
+                <h1 class="display-5 fw-bold">
+                    Bienvenido a MediSafe
+                </h1>
+
+                <p class="fs-5 mt-3">
+                    Una plataforma para la gestión de información médica
+                    con enfoque en seguridad, privacidad y organización.
+                </p>
+
+                <a href="/login" class="btn btn-light btn-lg mt-3">
+                    Iniciar sesión
+                </a>
+            </div>
+
+            <div class="col-md-4 text-center mt-4 mt-md-0">
+                <span class="bi bi-heart-pulse"
+                      style="font-size: 100px;">
+                </span>
+            </div>
+
+        </div>
+    </div>
+
+    <!-- Descripción -->
+    <div class="text-center mb-5">
+        <h2 class="fw-bold">¿Qué es MediSafe?</h2>
+
+        <p class="text-muted mx-auto" style="max-width: 750px;">
+            MediSafe es un sistema web que permite administrar pacientes
+            y sus consultas médicas. Facilita el registro, seguimiento y
+            consulta de información, procurando que cada médico tenga
+            acceso únicamente a los expedientes que le corresponden.
+        </p>
+    </div>
+
+    <!-- Funcionalidades -->
+    <h3 class="text-center fw-bold mb-4">
+        Funcionalidades principales
+    </h3>
+
+    <div class="row g-4">
+
+        <div class="col-md-6 col-lg-3">
+            <div class="card h-100 shadow-sm border-0 text-center p-3">
+                <div class="card-body">
+                    <span class="bi bi-people-fill text-primary"
+                          style="font-size: 45px;">
+                    </span>
+
+                    <h5 class="card-title mt-3">
+                        Gestión de pacientes
+                    </h5>
+
+                    <p class="card-text text-muted">
+                        Registro, consulta y edición de información
+                        de los pacientes.
+                    </p>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-6 col-lg-3">
+            <div class="card h-100 shadow-sm border-0 text-center p-3">
+                <div class="card-body">
+                    <span class="bi bi-clipboard2-pulse text-primary"
+                          style="font-size: 45px;">
+                    </span>
+
+                    <h5 class="card-title mt-3">
+                        Consultas médicas
+                    </h5>
+
+                    <p class="card-text text-muted">
+                        Registro y seguimiento de consultas
+                        médicas realizadas.
+                    </p>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-6 col-lg-3">
+            <div class="card h-100 shadow-sm border-0 text-center p-3">
+                <div class="card-body">
+                    <span class="bi bi-folder2-open text-primary"
+                          style="font-size: 45px;">
+                    </span>
+
+                    <h5 class="card-title mt-3">
+                        Historial médico
+                    </h5>
+
+                    <p class="card-text text-muted">
+                        Consulta del historial de atención
+                        de cada paciente.
+                    </p>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-6 col-lg-3">
+            <div class="card h-100 shadow-sm border-0 text-center p-3">
+                <div class="card-body">
+                    <span class="bi bi-shield-lock text-primary"
+                          style="font-size: 45px;">
+                    </span>
+
+                    <h5 class="card-title mt-3">
+                        Seguridad
+                    </h5>
+
+                    <p class="card-text text-muted">
+                        Autenticación y control de acceso
+                        mediante roles.
+                    </p>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- Seguridad -->
+    <div class="alert alert-light border mt-5 p-4">
+        <h4 class="fw-bold">
+            <span class="bi bi-shield-check text-primary"></span>
+            Seguridad y privacidad
+        </h4>
+
+        <p class="mb-0 text-muted">
+            MediSafe implementa controles de autenticación y autorización
+            para proteger la información registrada y limitar el acceso
+            a los expedientes según el médico responsable.
+        </p>
+    </div>
+
+    <!-- Pie -->
+    <div class="text-center text-muted mt-5 mb-4">
+        <p class="mb-1 fw-semibold">MediSafe</p>
+        <small>
+            Proyecto académico de Desarrollo de Software Seguro
+        </small>
+    </div>
+
+</div>

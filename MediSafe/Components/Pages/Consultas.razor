@@ -54,39 +54,64 @@
             <div class="card-body">
                 <h4>Seleccionar paciente</h4>
 
+                <div class="mb-3">
+                    <label class="form-label">Buscar paciente</label>
+
+                    <input type="text"
+                           class="form-control"
+                           placeholder="Buscar por nombre, apellidos, teléfono o correo..."
+                           @bind="Busqueda"
+                           @bind:event="oninput" />
+                </div>
+
                 <div class="table-responsive">
-                    <table class="table table-striped">
-                        <thead>
-                            <tr>
-                                <th>Nombre</th>
-                                <th>Teléfono</th>
-                                <th>Correo</th>
-                                <th>Acciones</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            @foreach (var paciente in Pacientes)
-                            {
-                                <tr>
-                                    <td>
-                                        @paciente.Nombre @paciente.Apellidos
-                                    </td>
-                                    <td>
-                                        @(paciente.Telefono ?? "No registrado")
-                                    </td>
-                                    <td>
-                                        @(paciente.Email ?? "No registrado")
-                                    </td>
-                                    <td>
-                                        <a href="@($"/pacientes/historial/{paciente.Id}")"
-                                           class="btn btn-primary btn-sm">
-                                            Consultar historial
-                                        </a>
-                                    </td>
-                                </tr>
-                            }
-                        </tbody>
-                    </table>
+                    @if (PacientesFiltrados.Count == 0)
+                    {
+                        <div class="alert alert-warning">
+                            No se encontraron pacientes con ese criterio de búsqueda.
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="table-responsive">
+                            <table class="table table-striped">
+                                <thead>
+                                    <tr>
+                                        <th>Nombre</th>
+                                        <th>Teléfono</th>
+                                        <th>Correo</th>
+                                        <th>Acciones</th>
+                                    </tr>
+                                </thead>
+
+                                <tbody>
+                                    @foreach (var paciente in PacientesFiltrados)
+                                    {
+                                        <tr>
+                                            <td>
+                                                @paciente.Nombre @paciente.Apellidos
+                                            </td>
+
+                                            <td>
+                                                @(paciente.Telefono ?? "No registrado")
+                                            </td>
+
+                                            <td>
+                                                @(paciente.Email ?? "No registrado")
+                                            </td>
+
+                                            <td>
+                                                <a href="@($"/pacientes/historial/{paciente.Id}")"
+                                                   class="btn btn-primary btn-sm">
+                                                    Consultar historial
+                                                </a>
+                                            </td>
+                                        </tr>
+                                    }
+                                </tbody>
+                            </table>
+                        </div>
+                    }
                 </div>
             </div>
         </div>
@@ -99,6 +124,20 @@
     private string? MedicoId;
     private string NombreMedico = "No identificado";
     private bool Cargando = true;
+
+    private string Busqueda = string.Empty;
+
+    private List<Paciente> PacientesFiltrados =>
+        string.IsNullOrWhiteSpace(Busqueda)
+            ? Pacientes
+            : Pacientes.Where(p =>
+                (p.Nombre + " " + p.Apellidos)
+                    .Contains(Busqueda, StringComparison.OrdinalIgnoreCase)
+                || (p.Telefono ?? "")
+                    .Contains(Busqueda, StringComparison.OrdinalIgnoreCase)
+                || (p.Email ?? "")
+                    .Contains(Busqueda, StringComparison.OrdinalIgnoreCase)
+            ).ToList();
 
     protected override async Task OnInitializedAsync()
     {
