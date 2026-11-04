@@ -43,7 +43,8 @@ using (var scope = app.Services.CreateScope())
     string[] roles =
     [
         ApplicationRoles.Administrator,
-        ApplicationRoles.Doctor
+        ApplicationRoles.Doctor,
+        ApplicationRoles.Receptionist
     ];
 
     foreach (var role in roles)
@@ -116,6 +117,11 @@ app.MapPost("/login/submit", async (
             user, ApplicationRoles.Doctor))
         {
             return Results.LocalRedirect("/medico");
+        }
+
+        else if (await userManager.IsInRoleAsync(user, ApplicationRoles.Receptionist))
+        {
+            return Results.Redirect("/recepcion");
         }
 
         await signInManager.SignOutAsync();

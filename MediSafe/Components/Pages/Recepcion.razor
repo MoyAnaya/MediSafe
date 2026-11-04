@@ -1,0 +1,282 @@
+﻿@page "/recepcion"
+@attribute [Microsoft.AspNetCore.Authorization.Authorize(Roles = "Recepcionista")]
+
+@using MediSafe.Data
+@using MediSafe.Models
+@using Microsoft.AspNetCore.Identity
+@using Microsoft.EntityFrameworkCore
+
+@inject ApplicationDbContext Db
+@inject UserManager<ApplicationUser> UserManager
+
+<PageTitle>Recepción - MediSafe</PageTitle>
+
+<div class="container mt-4">
+
+    <h1>Panel de recepción</h1>
+    <p class="text-muted">
+        Bienvenido al área de recepción de MediSafe.
+    </p>
+
+    <div class="d-flex gap-2 mb-4">
+        <form method="post" action="/logout">
+            <AntiforgeryToken />
+            <button type="submit" class="btn btn-outline-danger">
+                Cerrar sesión
+            </button>
+        </form>
+    </div>
+
+    @if (!string.IsNullOrWhiteSpace(Mensaje))
+    {
+        <div class="alert @ClaseMensaje">
+            @Mensaje
+        </div>
+    }
+
+    <div class="card shadow-sm mb-4">
+        <div class="card-body">
+
+            <h4>Registrar paciente</h4>
+            <p class="text-muted">
+                Completa los datos y selecciona al médico responsable.
+            </p>
+
+            <EditForm Model="NuevoPaciente"
+                      OnValidSubmit="RegistrarPaciente"
+                      FormName="RegistrarPacienteRecepcion">
+
+                <DataAnnotationsValidator />
+                <ValidationSummary />
+
+                <div class="row">
+
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label">Nombre *</label>
+                        <InputText class="form-control"
+                                   @bind-Value="NuevoPaciente.Nombre" />
+                        <ValidationMessage For="@(() => NuevoPaciente.Nombre)" />
+                    </div>
+
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label">Apellidos *</label>
+                        <InputText class="form-control"
+                                   @bind-Value="NuevoPaciente.Apellidos" />
+                        <ValidationMessage For="@(() => NuevoPaciente.Apellidos)" />
+                    </div>
+
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label">Fecha de nacimiento</label>
+                        <InputDate class="form-control"
+                                   @bind-Value="NuevoPaciente.FechaNacimiento" />
+                    </div>
+
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label">Teléfono</label>
+                        <InputText class="form-control"
+                                   @bind-Value="NuevoPaciente.Telefono"
+                                   maxlength="10"
+                                   inputmode="numeric" />
+                        <ValidationMessage For="@(() => NuevoPaciente.Telefono)" />
+                    </div>
+
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label">Correo electrónico</label>
+                        <InputText class="form-control"
+                                   @bind-Value="NuevoPaciente.Email" />
+                        <ValidationMessage For="@(() => NuevoPaciente.Email)" />
+                    </div>
+
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label">Médico responsable *</label>
+
+                        <InputSelect class="form-select"
+                                     @bind-Value="MedicoSeleccionadoId">
+
+                            <option value="">Selecciona un médico</option>
+
+                            @foreach (var medico in Medicos)
+                            {
+                                <option value="@medico.Id">
+                                    @medico.Nombre (@medico.Email)
+                                </option>
+                            }
+
+                        </InputSelect>
+                    </div>
+
+                </div>
+
+                <button type="submit"
+                        class="btn btn-primary"
+                        disabled="@(Medicos.Count == 0)">
+                    Registrar paciente
+                </button>
+
+            </EditForm>
+
+            @if (Medicos.Count == 0)
+            {
+                <p class="text-danger mt-2">
+                    No hay médicos registrados disponibles.
+                </p>
+            }
+
+        </div>
+    </div>
+
+    <div class="card shadow-sm">
+        <div class="card-body">
+
+            <h4>Pacientes registrados</h4>
+
+            @if (RegistrosPacientes.Count == 0)
+            {
+                <p class="text-muted">
+                    Todavía no hay pacientes registrados.
+                </p>
+            }
+            else
+            {
+                <div class="table-responsive">
+
+                    <table class="table table-striped">
+                        <thead>
+                            <tr>
+                                <th>Paciente</th>
+                                <th>Teléfono</th>
+                                <th>Correo</th>
+                                <th>Médico responsable</th>
+                                <th>Fecha de registro</th>
+                            </tr>
+                        </thead>
+
+                        <tbody>
+                            @foreach (var paciente in RegistrosPacientes)
+                            {
+                                <tr>
+                                    <td>
+                                        @paciente.Nombre @paciente.Apellidos
+                                    </td>
+
+                                    <td>
+                                        @(paciente.Telefono ?? "No registrado")
+                                    </td>
+
+                                    <td>
+                                        @(paciente.Email ?? "No registrado")
+                                    </td>
+
+                                    <td>
+                                        @(paciente.Medico?.Nombre
+                                            ?? paciente.Medico?.Email
+                                            ?? "No identificado")
+                                    </td>
+
+                                    <td>
+                                        @paciente.FechaRegistro.ToString("dd/MM/yyyy")
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+
+                </div>
+            }
+
+        </div>
+    </div>
+
+</div>
+
+@code {
+
+    private CrearPacienteModel NuevoPaciente = new();
+
+    private List<ApplicationUser> Medicos = new();
+
+    private List<Paciente> RegistrosPacientes = new();
+
+    private string? MedicoSeleccionadoId;
+
+    private string Mensaje = string.Empty;
+
+    private string ClaseMensaje = "alert-info";
+
+    protected override async Task OnInitializedAsync()
+    {
+        await CargarMedicos();
+        await CargarPacientes();
+    }
+
+    private async Task CargarMedicos()
+    {
+        Medicos = (await UserManager.GetUsersInRoleAsync(
+            ApplicationRoles.Doctor)).ToList();
+    }
+
+    private async Task CargarPacientes()
+    {
+        RegistrosPacientes = await Db.RegistrosPacientes
+            .AsNoTracking()
+            .Include(p => p.Medico)
+            .OrderByDescending(p => p.FechaRegistro)
+            .ToListAsync();
+    }
+
+    private async Task RegistrarPaciente()
+    {
+        if (string.IsNullOrWhiteSpace(MedicoSeleccionadoId))
+        {
+            MostrarError("Debes seleccionar un médico responsable.");
+            return;
+        }
+
+        // Comprobar que el usuario seleccionado realmente sea médico.
+        var medicoValido = Medicos.FirstOrDefault(
+            m => m.Id == MedicoSeleccionadoId);
+
+        if (medicoValido == null)
+        {
+            MostrarError("El médico seleccionado no es válido.");
+            return;
+        }
+
+        var paciente = new Paciente
+        {
+            Nombre = NuevoPaciente.Nombre.Trim(),
+            Apellidos = NuevoPaciente.Apellidos.Trim(),
+            FechaNacimiento = NuevoPaciente.FechaNacimiento,
+
+            Telefono = string.IsNullOrWhiteSpace(NuevoPaciente.Telefono)
+                ? null
+                : NuevoPaciente.Telefono.Trim(),
+
+            Email = string.IsNullOrWhiteSpace(NuevoPaciente.Email)
+                ? null
+                : NuevoPaciente.Email.Trim(),
+
+            MedicoId = medicoValido.Id,
+            FechaRegistro = DateTime.UtcNow
+        };
+
+        Db.RegistrosPacientes.Add(paciente);
+
+        await Db.SaveChangesAsync();
+
+        NuevoPaciente = new CrearPacienteModel();
+        MedicoSeleccionadoId = null;
+
+        await CargarPacientes();
+
+        Mensaje = "Paciente registrado y asignado correctamente al médico.";
+        ClaseMensaje = "alert-success";
+    }
+
+    private void MostrarError(string mensaje)
+    {
+        Mensaje = mensaje;
+        ClaseMensaje = "alert-danger";
+    }
+}
+
