@@ -102,7 +102,7 @@
                             @foreach (var medico in Medicos)
                             {
                                 <option value="@medico.Id">
-                                    @medico.Nombre (@medico.Email)
+                                    @medico.Nombre — @(medico.Especialidad ?? "Sin especialidad registrada")
                                 </option>
                             }
 
@@ -152,6 +152,7 @@
                                 <th>Teléfono</th>
                                 <th>Correo</th>
                                 <th>Médico responsable</th>
+                                <th>Especialidad</th>
                                 <th>Recepcionista</th>
                                 <th>Fecha de registro</th>
                             </tr>
@@ -178,6 +179,8 @@
                                             ?? paciente.Medico?.Email
                                             ?? "No identificado")
                                     </td>
+
+                                    <td>@(paciente.Medico?.Especialidad ?? "Sin especialidad registrada")</td>
 
                                     <td>
                                         @(paciente.Recepcionista?.Nombre

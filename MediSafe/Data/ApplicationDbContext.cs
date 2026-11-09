@@ -1,13 +1,18 @@
-﻿using Microsoft.AspNetCore.Identity;
+﻿using System.ComponentModel.DataAnnotations;
+using MediSafe.Models;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
-using MediSafe.Models;
+using System.ComponentModel.DataAnnotations;
 
 namespace MediSafe.Data
 {
     public class ApplicationUser : IdentityUser
     {
         public string Nombre { get; set; } = string.Empty;
+        
+        [StringLength(50)]
+        public string? Especialidad { get; set; }
     }
 
     public class ApplicationDbContext : IdentityDbContext<ApplicationUser>

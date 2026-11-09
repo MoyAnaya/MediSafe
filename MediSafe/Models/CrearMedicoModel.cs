@@ -16,4 +16,7 @@ public class CrearMedicoModel
     [MinLength(8, ErrorMessage = "La contraseña debe tener al menos 8 caracteres.")]
     [DataType(DataType.Password)]
     public string Password { get; set; } = string.Empty;
+
+    [StringLength(50, ErrorMessage = "La especialidad no puede superar los 50 caracteres.")]
+    public string? Especialidad { get; set; }
 }

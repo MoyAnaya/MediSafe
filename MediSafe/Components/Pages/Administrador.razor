@@ -55,6 +55,17 @@
                         </div>
 
                         <div class="mb-3">
+                            <label class="form-label">Especialidad médica</label>
+
+                            <InputText class="form-control"
+                                       maxlength="50"
+                                       @bind-Value="NuevoMedico.Especialidad"
+                                       placeholder="Ej. Cardiología" />
+
+                            <ValidationMessage For="@(() => NuevoMedico.Especialidad)" />
+                        </div>
+
+                        <div class="mb-3">
                             <label class="form-label">Correo electrónico</label>
                             <InputText type="email" class="form-control"
                                        @bind-Value="NuevoMedico.Email" />
@@ -157,6 +168,7 @@
                             <tr>
                                 <th>Nombre</th>
                                 <th>Correo electrónico</th>
+                                <th>Especialidad</th>
                                 <th>Acciones</th>
                             </tr>
                         </thead>
@@ -166,6 +178,7 @@
                                 <tr>
                                     <td>@medico.Nombre</td>
                                     <td>@medico.Email</td>
+                                    <td>@(medico.Especialidad ?? "Sin especialidad registrada")</td>
                                     <td>
                                         <button class="btn btn-warning btn-sm me-2"
                                                 @onclick="() => IniciarEdicion(medico)">
@@ -297,6 +310,17 @@
                         <InputText class="form-control"
                                    @bind-Value="MedicoEditando.Nombre" />
                         <ValidationMessage For="@(() => MedicoEditando.Nombre)" />
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Especialidad médica</label>
+
+                        <InputText class="form-control"
+                                   maxlength="50"
+                                   @bind-Value="MedicoEditando.Especialidad"
+                                   placeholder="Ej. Pediatría" />
+
+                        <ValidationMessage For="@(() => MedicoEditando.Especialidad)" />
                     </div>
 
                     <div class="mb-3">
@@ -486,6 +510,7 @@
             UserName = email,
             Email = email,
             Nombre = NuevoMedico.Nombre.Trim(),
+			Especialidad = NuevoMedico.Especialidad?.Trim(),
             EmailConfirmed = true
         };
 
@@ -575,6 +600,7 @@
             Nombre = medico.Nombre,
             Email = medico.Email,
             UserName = medico.UserName,
+			Especialidad = medico.Especialidad,
             EmailConfirmed = medico.EmailConfirmed
         };
 
@@ -615,6 +641,7 @@
         original.Nombre = MedicoEditando.Nombre.Trim();
         original.Email = email;
         original.UserName = email;
+		original.Especialidad = MedicoEditando.Especialidad?.Trim();
         original.NormalizedEmail = UserManager.NormalizeEmail(email);
         original.NormalizedUserName = UserManager.NormalizeName(email);
 
