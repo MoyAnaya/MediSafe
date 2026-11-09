@@ -29,9 +29,14 @@ public class Paciente
 
     public DateTime FechaRegistro { get; set; } = DateTime.UtcNow;
 
-    // Identificador del médico propietario del paciente
+    // Médico responsable del paciente
     [Required]
     public string MedicoId { get; set; } = string.Empty;
 
     public ApplicationUser? Medico { get; set; }
+
+    // Recepcionista asociada al paciente
+    public string? RecepcionistaId { get; set; }
+
+    public ApplicationUser? Recepcionista { get; set; }
 }

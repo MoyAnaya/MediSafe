@@ -27,7 +27,22 @@ namespace MediSafe.Data
             base.OnModelCreating(builder);
 
             builder.Entity<Paciente>().ToTable("Pacientes");
+
             builder.Entity<Consulta>().ToTable("Consultas");
+
+            // Relación del paciente con su médico
+            builder.Entity<Paciente>()
+                .HasOne(p => p.Medico)
+                .WithMany()
+                .HasForeignKey(p => p.MedicoId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            // Relación del paciente con su recepcionista
+            builder.Entity<Paciente>()
+                .HasOne(p => p.Recepcionista)
+                .WithMany()
+                .HasForeignKey(p => p.RecepcionistaId)
+                .OnDelete(DeleteBehavior.SetNull);
         }
     }
 }

@@ -158,6 +158,9 @@ namespace MediSafe.Migrations
                         .HasMaxLength(100)
                         .HasColumnType("varchar(100)");
 
+                    b.Property<string>("RecepcionistaId")
+                        .HasColumnType("varchar(255)");
+
                     b.Property<string>("Telefono")
                         .HasMaxLength(20)
                         .HasColumnType("varchar(20)");
@@ -165,6 +168,8 @@ namespace MediSafe.Migrations
                     b.HasKey("Id");
 
                     b.HasIndex("MedicoId");
+
+                    b.HasIndex("RecepcionistaId");
 
                     b.ToTable("Pacientes", (string)null);
                 });
@@ -313,10 +318,17 @@ namespace MediSafe.Migrations
                     b.HasOne("MediSafe.Data.ApplicationUser", "Medico")
                         .WithMany()
                         .HasForeignKey("MedicoId")
-                        .OnDelete(DeleteBehavior.Cascade)
+                        .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
+                    b.HasOne("MediSafe.Data.ApplicationUser", "Recepcionista")
+                        .WithMany()
+                        .HasForeignKey("RecepcionistaId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
                     b.Navigation("Medico");
+
+                    b.Navigation("Recepcionista");
                 });
 
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityRoleClaim<string>", b =>

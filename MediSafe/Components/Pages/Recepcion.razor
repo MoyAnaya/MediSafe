@@ -5,15 +5,18 @@
 @using MediSafe.Models
 @using Microsoft.AspNetCore.Identity
 @using Microsoft.EntityFrameworkCore
+@using Microsoft.AspNetCore.Components.Authorization
 
 @inject ApplicationDbContext Db
 @inject UserManager<ApplicationUser> UserManager
+@inject AuthenticationStateProvider AuthenticationStateProvider
 
 <PageTitle>Recepción - MediSafe</PageTitle>
 
 <div class="container mt-4">
 
     <h1>Panel de recepción</h1>
+
     <p class="text-muted">
         Bienvenido al área de recepción de MediSafe.
     </p>
@@ -38,6 +41,7 @@
         <div class="card-body">
 
             <h4>Registrar paciente</h4>
+
             <p class="text-muted">
                 Completa los datos y selecciona al médico responsable.
             </p>
@@ -141,12 +145,14 @@
                 <div class="table-responsive">
 
                     <table class="table table-striped">
+
                         <thead>
                             <tr>
                                 <th>Paciente</th>
                                 <th>Teléfono</th>
                                 <th>Correo</th>
                                 <th>Médico responsable</th>
+                                <th>Recepcionista</th>
                                 <th>Fecha de registro</th>
                             </tr>
                         </thead>
@@ -174,11 +180,18 @@
                                     </td>
 
                                     <td>
+                                        @(paciente.Recepcionista?.Nombre
+                                            ?? paciente.Recepcionista?.Email
+                                            ?? "Sin recepcionista asignada")
+                                    </td>
+
+                                    <td>
                                         @paciente.FechaRegistro.ToString("dd/MM/yyyy")
                                     </td>
                                 </tr>
                             }
                         </tbody>
+
                     </table>
 
                 </div>
@@ -217,9 +230,25 @@
 
     private async Task CargarPacientes()
     {
+        // Obtener el usuario que inició sesión.
+        var estadoAutenticacion =
+            await AuthenticationStateProvider.GetAuthenticationStateAsync();
+
+        var recepcionista = await UserManager.GetUserAsync(
+            estadoAutenticacion.User);
+
+        if (recepcionista == null)
+        {
+            RegistrosPacientes = new List<Paciente>();
+            return;
+        }
+
+        // Consultar únicamente los pacientes de esta recepcionista.
         RegistrosPacientes = await Db.RegistrosPacientes
             .AsNoTracking()
             .Include(p => p.Medico)
+            .Include(p => p.Recepcionista)
+            .Where(p => p.RecepcionistaId == recepcionista.Id)
             .OrderByDescending(p => p.FechaRegistro)
             .ToListAsync();
     }
@@ -232,11 +261,28 @@
             return;
         }
 
-        // Comprobar que el usuario seleccionado realmente sea médico.
-        var medicoValido = Medicos.FirstOrDefault(
-            m => m.Id == MedicoSeleccionadoId);
+        // Obtener al usuario que inició sesión.
+        var estadoAutenticacion =
+            await AuthenticationStateProvider.GetAuthenticationStateAsync();
 
-        if (medicoValido == null)
+        var recepcionista = await UserManager.GetUserAsync(
+            estadoAutenticacion.User);
+
+        if (recepcionista == null ||
+            !await UserManager.IsInRoleAsync(
+                recepcionista, ApplicationRoles.Receptionist))
+        {
+            MostrarError("No se pudo identificar la cuenta de recepción.");
+            return;
+        }
+
+        // Comprobar que el usuario seleccionado sea un médico válido.
+        var medicoValido = await UserManager.FindByIdAsync(
+            MedicoSeleccionadoId);
+
+        if (medicoValido == null ||
+            !await UserManager.IsInRoleAsync(
+                medicoValido, ApplicationRoles.Doctor))
         {
             MostrarError("El médico seleccionado no es válido.");
             return;
@@ -245,7 +291,9 @@
         var paciente = new Paciente
         {
             Nombre = NuevoPaciente.Nombre.Trim(),
+
             Apellidos = NuevoPaciente.Apellidos.Trim(),
+
             FechaNacimiento = NuevoPaciente.FechaNacimiento,
 
             Telefono = string.IsNullOrWhiteSpace(NuevoPaciente.Telefono)
@@ -257,6 +305,10 @@
                 : NuevoPaciente.Email.Trim(),
 
             MedicoId = medicoValido.Id,
+
+            // Se asigna automáticamente la recepcionista autenticada.
+            RecepcionistaId = recepcionista.Id,
+
             FechaRegistro = DateTime.UtcNow
         };
 
@@ -265,11 +317,13 @@
         await Db.SaveChangesAsync();
 
         NuevoPaciente = new CrearPacienteModel();
+
         MedicoSeleccionadoId = null;
 
         await CargarPacientes();
 
-        Mensaje = "Paciente registrado y asignado correctamente al médico.";
+        Mensaje = "Paciente registrado y asociado correctamente al médico y a tu cuenta de recepción.";
+
         ClaseMensaje = "alert-success";
     }
 
@@ -279,4 +333,3 @@
         ClaseMensaje = "alert-danger";
     }
 }
-

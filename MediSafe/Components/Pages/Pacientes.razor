@@ -81,6 +81,26 @@
                     </div>
                 </div>
 
+                <div class="col-md-6 mb-3">
+                    <label class="form-label">Recepcionista responsable *</label>
+
+                    <InputSelect class="form-select"
+                                 @bind-Value="RecepcionistaSeleccionadaId">
+
+                        <option value="">Selecciona una recepcionista</option>
+
+                        @foreach (var recepcionista in Recepcionistas)
+                        {
+                            <option value="@recepcionista.Id">
+                                @(string.IsNullOrWhiteSpace(recepcionista.Nombre)
+                                    ? recepcionista.Email
+                                    : recepcionista.Nombre)
+                            </option>
+                        }
+
+                    </InputSelect>
+                </div>
+
                 <button type="submit" class="btn btn-primary">
                     Registrar paciente
                 </button>
@@ -108,6 +128,7 @@
                                 <th>Fecha de nacimiento</th>
                                 <th>Teléfono</th>
                                 <th>Correo</th>
+                                <th>Recepcionista</th>
                                 <th>Acciones</th>
                             </tr>
                         </thead>
@@ -121,6 +142,12 @@
                                     </td>
                                     <td>@(paciente.Telefono ?? "No registrado")</td>
                                     <td>@(paciente.Email ?? "No registrado")</td>
+                                    <td>
+                                        @(paciente.Recepcionista?.Nombre
+                                            ?? paciente.Recepcionista?.Email
+                                            ?? "Sin recepcionista asignada")
+                                    </td>
+
                                     <td>
                                         <button type="button"
                                                 class="btn btn-warning btn-sm"
@@ -211,6 +238,10 @@
 
     private List<Paciente> RegistrosPacientes = new();
 
+    private List<ApplicationUser> Recepcionistas = new();
+
+    private string? RecepcionistaSeleccionadaId;
+
     private string Mensaje = string.Empty;
     private string ClaseMensaje = "alert-info";
 
@@ -234,6 +265,9 @@
         ? medico.Email ?? "Médico"
         : medico.Nombre;
 
+        Recepcionistas = (await UserManager.GetUsersInRoleAsync(
+            ApplicationRoles.Receptionist)).ToList();
+        
         await CargarPacientes();
     }
 
@@ -246,6 +280,7 @@
 
         RegistrosPacientes = await Db.RegistrosPacientes
             .AsNoTracking()
+			.Include(p => p.Recepcionista)
             .Where(p => p.MedicoId == MedicoId)
             .OrderByDescending(p => p.FechaRegistro)
             .ToListAsync();
@@ -259,6 +294,25 @@
             return;
         }
 
+        if (string.IsNullOrEmpty(RecepcionistaSeleccionadaId))
+        {
+            MostrarError("Debes seleccionar una recepcionista.");
+            return;
+        }
+
+        // Verificar que la cuenta seleccionada exista.
+        var recepcionista = await UserManager.FindByIdAsync(
+            RecepcionistaSeleccionadaId);
+
+        // Verificar que realmente tenga el rol de recepcionista.
+        if (recepcionista == null ||
+            !await UserManager.IsInRoleAsync(
+                recepcionista, ApplicationRoles.Receptionist))
+        {
+            MostrarError("La recepcionista seleccionada no es válida.");
+            return;
+        }
+
         var paciente = new Paciente
         {
             Nombre = NuevoPaciente.Nombre.Trim(),
@@ -266,7 +320,13 @@
             FechaNacimiento = NuevoPaciente.FechaNacimiento,
             Telefono = NuevoPaciente.Telefono,
             Email = NuevoPaciente.Email,
+
+            // El médico responsable se asigna automáticamente.
             MedicoId = MedicoId,
+
+            // Se guarda la recepcionista seleccionada.
+            RecepcionistaId = recepcionista.Id,
+
             FechaRegistro = DateTime.UtcNow
         };
 
@@ -275,6 +335,7 @@
         await Db.SaveChangesAsync();
 
         NuevoPaciente = new CrearPacienteModel();
+        RecepcionistaSeleccionadaId = null;
 
         await CargarPacientes();
 
