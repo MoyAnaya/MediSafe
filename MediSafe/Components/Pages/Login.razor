@@ -1,4 +1,7 @@
-﻿@page "/login"
+﻿@using Microsoft.AspNetCore.Components.Authorization
+@inject AuthenticationStateProvider AuthenticationStateProvider
+
+@page "/login"
 @using Microsoft.AspNetCore.Components.Forms
 @using Microsoft.AspNetCore.WebUtilities
 @inject NavigationManager Navigation
@@ -72,4 +75,17 @@
         QueryHelpers.ParseQuery(
             new Uri(Navigation.Uri).Query)
         .ContainsKey("error");
+
+    protected override async Task OnInitializedAsync()
+    {
+        var estado = await AuthenticationStateProvider
+            .GetAuthenticationStateAsync();
+
+        if (estado.User.Identity?.IsAuthenticated == true)
+        {
+            Navigation.NavigateTo(
+                "/cerrar-sesion-automatica",
+                forceLoad: true);
+        }
+    }
 }

@@ -143,7 +143,13 @@ app.MapPost("/logout", async (
     return Results.LocalRedirect("/login");
 });
 
+app.MapGet("/cerrar-sesion-automatica", async (
+    SignInManager<ApplicationUser> signInManager) =>
+{
+    await signInManager.SignOutAsync();
 
+    return Results.LocalRedirect("/login");
+});
 
 using (var scope = app.Services.CreateScope())
 {

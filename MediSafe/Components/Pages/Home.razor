@@ -1,4 +1,9 @@
-﻿@page "/"
+﻿@using Microsoft.AspNetCore.Components.Authorization
+@using Microsoft.AspNetCore.Identity
+@inject AuthenticationStateProvider AuthenticationStateProvider
+@inject NavigationManager Navigation
+
+@page "/"
 
 <PageTitle>Inicio - MediSafe</PageTitle>
 
@@ -154,3 +159,18 @@
     </div>
 
 </div>
+
+@code {
+    protected override async Task OnInitializedAsync()
+    {
+        var estado = await AuthenticationStateProvider
+            .GetAuthenticationStateAsync();
+
+        if (estado.User.Identity?.IsAuthenticated == true)
+        {
+            Navigation.NavigateTo(
+                "/cerrar-sesion-automatica",
+                forceLoad: true);
+        }
+    }
+}
