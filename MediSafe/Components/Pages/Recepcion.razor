@@ -219,6 +219,8 @@
 
     private string ClaseMensaje = "alert-info";
 
+    
+
     protected override async Task OnInitializedAsync()
     {
         await CargarMedicos();
@@ -256,6 +258,7 @@
             .ToListAsync();
     }
 
+    
     private async Task RegistrarPaciente()
     {
         if (string.IsNullOrWhiteSpace(MedicoSeleccionadoId))
@@ -315,20 +318,34 @@
             FechaRegistro = DateTime.UtcNow
         };
 
-        Db.RegistrosPacientes.Add(paciente);
+        try
+        {
+            Db.RegistrosPacientes.Add(paciente);
 
-        await Db.SaveChangesAsync();
+            await Db.SaveChangesAsync();
 
-        NuevoPaciente = new CrearPacienteModel();
+            NuevoPaciente = new CrearPacienteModel();
 
-        MedicoSeleccionadoId = null;
+            MedicoSeleccionadoId = null;
 
-        await CargarPacientes();
+            await CargarPacientes();
 
-        Mensaje = "Paciente registrado y asociado correctamente al médico y a tu cuenta de recepción.";
+            Mensaje = "Paciente registrado y asociado correctamente al médico y a tu cuenta de recepción.";
 
-        ClaseMensaje = "alert-success";
+            ClaseMensaje = "alert-success";
+        }
+        catch (ContenidoNoPermitidoException)
+        {
+            // Evitar que el paciente rechazado permanezca
+            // como entidad pendiente de guardar.
+            Db.Entry(paciente).State = EntityState.Detached;
+
+            MostrarError(
+                "No se permite ingresar contenido HTML o JavaScript. " +
+                "Revisa los datos del paciente e intenta nuevamente.");
+        }
     }
+
 
     private void MostrarError(string mensaje)
     {

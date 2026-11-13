@@ -206,31 +206,78 @@
             .ToListAsync();
     }
 
+    
     private async Task RegistrarConsulta()
     {
-        if (PacienteActual == null || string.IsNullOrEmpty(MedicoId))
+        if (string.IsNullOrEmpty(MedicoId))
         {
+            MostrarError("No se pudo identificar al médico.");
             return;
         }
 
-        var consulta = new Consulta
+        // Verificar que el paciente pertenece al médico.
+        var pacienteValido = await Db.RegistrosPacientes
+            .AsNoTracking()
+            .AnyAsync(p =>
+                p.Id == PacienteId &&
+                p.MedicoId == MedicoId);
+
+        if (!pacienteValido)
         {
-            PacienteId = PacienteId,
-            MedicoId = MedicoId,
-            FechaConsulta = NuevaConsulta.FechaConsulta,
-            Motivo = NuevaConsulta.Motivo.Trim(),
-            Diagnostico = NuevaConsulta.Diagnostico.Trim(),
-            Tratamiento = NuevaConsulta.Tratamiento?.Trim(),
-            Observaciones = NuevaConsulta.Observaciones?.Trim()
-        };
+            MostrarError(
+                "No tienes permiso para registrar consultas de este paciente.");
 
-        Db.RegistrosConsultas.Add(consulta);
-        await Db.SaveChangesAsync();
+            PacienteActual = null;
+            Consultas.Clear();
 
-        NuevaConsulta = new CrearConsultaModel();
-        await CargarConsultas();
+            return;
+        }
 
-        Mensaje = "La consulta se registró correctamente.";
-        ClaseMensaje = "alert-success";
+        try
+        {
+            var consulta = new Consulta
+            {
+                PacienteId = PacienteId,
+                MedicoId = MedicoId,
+                FechaConsulta = NuevaConsulta.FechaConsulta,
+                Motivo = NuevaConsulta.Motivo.Trim(),
+                Diagnostico = NuevaConsulta.Diagnostico.Trim(),
+                Tratamiento = NuevaConsulta.Tratamiento?.Trim(),
+                Observaciones = NuevaConsulta.Observaciones?.Trim()
+            };
+
+            Db.RegistrosConsultas.Add(consulta);
+
+            await Db.SaveChangesAsync();
+
+            NuevaConsulta = new CrearConsultaModel();
+
+            await CargarConsultas();
+
+            Mensaje = "La consulta se registró correctamente.";
+            ClaseMensaje = "alert-success";
+        }
+        catch (ContenidoNoPermitidoException)
+        {
+            // Evitar que el registro rechazado permanezca en el contexto.
+            var entrada = Db.ChangeTracker.Entries<Consulta>()
+                .FirstOrDefault(e => e.State == EntityState.Added);
+
+            if (entrada != null)
+            {
+                entrada.State = EntityState.Detached;
+            }
+
+            MostrarError(
+                "No se permite ingresar contenido HTML o JavaScript. " +
+                "Elimina ese contenido e intenta nuevamente.");
+        }
+    }
+
+
+    private void MostrarError(string mensaje)
+    {
+        Mensaje = mensaje;
+        ClaseMensaje = "alert-danger";
     }
 }

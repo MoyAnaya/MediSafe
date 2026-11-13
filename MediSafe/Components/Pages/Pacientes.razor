@@ -287,6 +287,8 @@
             .ToListAsync();
     }
 
+
+    
     private async Task RegistrarPaciente()
     {
         if (string.IsNullOrEmpty(MedicoId))
@@ -301,11 +303,9 @@
             return;
         }
 
-        // Verificar que la cuenta seleccionada exista.
         var recepcionista = await UserManager.FindByIdAsync(
             RecepcionistaSeleccionadaId);
 
-        // Verificar que realmente tenga el rol de recepcionista.
         if (recepcionista == null ||
             !await UserManager.IsInRoleAsync(
                 recepcionista, ApplicationRoles.Receptionist))
@@ -314,35 +314,48 @@
             return;
         }
 
-        var paciente = new Paciente
+        try
         {
-            Nombre = NuevoPaciente.Nombre.Trim(),
-            Apellidos = NuevoPaciente.Apellidos.Trim(),
-            FechaNacimiento = NuevoPaciente.FechaNacimiento,
-            Telefono = NuevoPaciente.Telefono,
-            Email = NuevoPaciente.Email,
+            var paciente = new Paciente
+            {
+                Nombre = NuevoPaciente.Nombre.Trim(),
+                Apellidos = NuevoPaciente.Apellidos.Trim(),
+                FechaNacimiento = NuevoPaciente.FechaNacimiento,
+                Telefono = NuevoPaciente.Telefono,
+                Email = NuevoPaciente.Email,
+                MedicoId = MedicoId,
+                RecepcionistaId = recepcionista.Id,
+                FechaRegistro = DateTime.UtcNow
+            };
 
-            // El médico responsable se asigna automáticamente.
-            MedicoId = MedicoId,
+            Db.RegistrosPacientes.Add(paciente);
 
-            // Se guarda la recepcionista seleccionada.
-            RecepcionistaId = recepcionista.Id,
+            await Db.SaveChangesAsync();
 
-            FechaRegistro = DateTime.UtcNow
-        };
+            NuevoPaciente = new CrearPacienteModel();
+            RecepcionistaSeleccionadaId = null;
 
-        Db.RegistrosPacientes.Add(paciente);
+            await CargarPacientes();
 
-        await Db.SaveChangesAsync();
+            Mensaje = "El paciente se registró correctamente.";
+            ClaseMensaje = "alert-success";
+        }
+        catch (ContenidoNoPermitidoException)
+        {
+            var entrada = Db.ChangeTracker.Entries<Paciente>()
+                .FirstOrDefault(e => e.State == EntityState.Added);
 
-        NuevoPaciente = new CrearPacienteModel();
-        RecepcionistaSeleccionadaId = null;
+            if (entrada != null)
+            {
+                entrada.State = EntityState.Detached;
+            }
 
-        await CargarPacientes();
-
-        Mensaje = "El paciente se registró correctamente.";
-        ClaseMensaje = "alert-success";
+            MostrarError(
+                "No se permite ingresar contenido HTML o JavaScript. " +
+                "Revisa los campos e intenta nuevamente.");
+        }
     }
+
 
     private void MostrarError(string mensaje)
     {
@@ -369,6 +382,7 @@
         Mensaje = string.Empty;
     }
 
+   
     private async Task GuardarEdicion()
     {
         if (PacienteEditando == null || string.IsNullOrEmpty(MedicoId))
@@ -377,7 +391,7 @@
             return;
         }
 
-        // Verificar nuevamente que el paciente pertenece al médico.
+        // Verificar que el paciente pertenece al médico.
         var paciente = await Db.RegistrosPacientes
             .FirstOrDefaultAsync(p =>
                 p.Id == PacienteEditando.Id &&
@@ -385,31 +399,48 @@
 
         if (paciente == null)
         {
-            MostrarError("No se encontró el paciente o no tienes permiso para editarlo.");
+            MostrarError(
+                "No se encontró el paciente o no tienes permiso para editarlo.");
+
             PacienteEditando = null;
             return;
         }
 
-        paciente.Nombre = DatosEdicion.Nombre.Trim();
-        paciente.Apellidos = DatosEdicion.Apellidos.Trim();
-        paciente.FechaNacimiento = DatosEdicion.FechaNacimiento;
-        paciente.Telefono = string.IsNullOrWhiteSpace(DatosEdicion.Telefono)
-            ? null
-            : DatosEdicion.Telefono.Trim();
-        paciente.Email = string.IsNullOrWhiteSpace(DatosEdicion.Email)
-            ? null
-            : DatosEdicion.Email.Trim();
+        try
+        {
+            paciente.Nombre = DatosEdicion.Nombre.Trim();
+            paciente.Apellidos = DatosEdicion.Apellidos.Trim();
+            paciente.FechaNacimiento = DatosEdicion.FechaNacimiento;
 
-        await Db.SaveChangesAsync();
+            paciente.Telefono = string.IsNullOrWhiteSpace(DatosEdicion.Telefono)
+                ? null
+                : DatosEdicion.Telefono.Trim();
 
-        PacienteEditando = null;
-        DatosEdicion = new CrearPacienteModel();
+            paciente.Email = string.IsNullOrWhiteSpace(DatosEdicion.Email)
+                ? null
+                : DatosEdicion.Email.Trim();
 
-        await CargarPacientes();
+            await Db.SaveChangesAsync();
 
-        Mensaje = "Los datos del paciente se actualizaron correctamente.";
-        ClaseMensaje = "alert-success";
+            PacienteEditando = null;
+            DatosEdicion = new CrearPacienteModel();
+
+            await CargarPacientes();
+
+            Mensaje = "Los datos del paciente se actualizaron correctamente.";
+            ClaseMensaje = "alert-success";
+        }
+        catch (ContenidoNoPermitidoException)
+        {
+            MostrarError(
+                "No se permite ingresar contenido HTML o JavaScript. " +
+                "Revisa los campos e intenta nuevamente.");
+
+            // Deshacer los cambios pendientes en el contexto.
+            await Db.Entry(paciente).ReloadAsync();
+        }
     }
+
 
     private void CancelarEdicion()
     {
